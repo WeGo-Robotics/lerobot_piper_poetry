@@ -85,6 +85,7 @@ from lerobot.robots import (  # noqa: F401
     make_robot_from_config,
     so100_follower,
     so101_follower,
+    piper_follower,
 )
 from lerobot.teleoperators import (  # noqa: F401
     Teleoperator,
@@ -95,6 +96,7 @@ from lerobot.teleoperators import (  # noqa: F401
     make_teleoperator_from_config,
     so100_leader,
     so101_leader,
+    piper_leader,
 )
 from lerobot.teleoperators.keyboard.teleop_keyboard import KeyboardTeleop
 from lerobot.utils.control_utils import (
@@ -209,7 +211,15 @@ def record_loop(
             (
                 t
                 for t in teleop
-                if isinstance(t, (so100_leader.SO100Leader, so101_leader.SO101Leader, koch_leader.KochLeader))
+                if isinstance(
+                    t,
+                    (
+                        so100_leader.SO100Leader,
+                        so101_leader.SO101Leader,
+                        koch_leader.KochLeader,
+                        piper_leader.PiperLeader,
+                    ),
+                )
             ),
             None,
         )
@@ -329,7 +339,8 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
     # Load pretrained policy
     policy = None if cfg.policy is None else make_policy(cfg.policy, ds_meta=dataset.meta)
 
-    robot.connect()
+    robot.connect(False)
+    robot.calibrate()
     if teleop is not None:
         teleop.connect()
 
