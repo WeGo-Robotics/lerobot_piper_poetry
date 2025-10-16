@@ -19,6 +19,7 @@ import time
 from contextlib import nullcontext
 from pprint import pformat
 from typing import Any
+import shutup;
 
 import torch
 from termcolor import colored
@@ -290,6 +291,7 @@ def train(cfg: TrainPipelineConfig):
 
 def main():
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    shutup.please()
     init_logging()
     train()
 
