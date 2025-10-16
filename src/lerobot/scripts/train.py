@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 import time
 from contextlib import nullcontext
 from pprint import pformat
@@ -288,6 +289,7 @@ def train(cfg: TrainPipelineConfig):
 
 
 def main():
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
     init_logging()
     train()
 
