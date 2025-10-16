@@ -154,8 +154,12 @@ class PiperFollower(Robot):
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
 
-        goal_pos = {key.removesuffix(".pos"): val for key, val in action.items() if key.endswith(".pos")}
-        goal_pos = action
+        goal_pos = {}
+        for key, val in action.items():
+            if key.endswith(".pos"):
+                goal_pos[key.removesuffix(".pos")] = val
+            else:
+                goal_pos[key] = val
 
         # Cap goal position when too far away from present position.
         # /!\ Slower fps expected due to reading from the follower.
