@@ -2,7 +2,7 @@
 declare -A USB_PORTS 
 
 USB_PORTS["1-4.2:1.0"]="can_follower:1000000"
-USB_PORTS["1-1:1.0"]="can1_leader:1000000"
+USB_PORTS["1-1:1.0"]="can_leader:1000000"
 
 # Whether to ignore CAN quantity check (default false)
 IGNORE_CHECK=false

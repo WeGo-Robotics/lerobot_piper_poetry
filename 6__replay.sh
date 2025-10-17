@@ -6,7 +6,7 @@ echo $HF_USER
 
 lerobot-replay \
 --robot.type=piper_follower \
---robot.port=can0 \
+--robot.port=can_follower \
 --robot.id=black \
 --dataset.repo_id=${HF_USER}/piper_pick_yellow_car \
 --dataset.episode=0

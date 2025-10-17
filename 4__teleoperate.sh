@@ -6,9 +6,9 @@ echo $HF_USER
 
 python ./src/lerobot/teleoperate.py \
     --robot.type=piper_follower \
-    --robot.port=can0 \
+    --robot.port=can_follower \
     --robot.id=black \
     --teleop.type=piper_leader \
-    --teleop.port=can1 \
+    --teleop.port=can_leader \
     --teleop.id=blue \
     --display_data=true

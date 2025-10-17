@@ -11,11 +11,11 @@ python src/lerobot/camera_prop.py \
 python src/lerobot/scripts/server/robot_client.py \
 --server_address=127.0.0.1:8088 \
 --robot.type=piper_follower \
---robot.port=can0 \
+--robot.port=can_follower \
 --robot.id=black \
 --robot.cameras="{ \
     top: {type: opencv, index_or_path: '/dev/video6', width: 640, height: 480, fps: 30}, \
-    hand: {type: opencv, index_or_path: '/dev/video0', width: 640, height: 480, fps: 30}}" \
+    hand: {type: opencv, index_or_path: '/dev/video4', width: 640, height: 480, fps: 30}}" \
 --pretrained_name_or_path=wego-hansu/piper_smolvla_teleop_033_B \
 --policy_type=smolvla \
 --policy_device=cuda \
