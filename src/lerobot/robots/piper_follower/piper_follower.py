@@ -20,15 +20,15 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
+from lerobot.cameras import Camera
 from lerobot.cameras.utils import make_cameras_from_configs
 from lerobot.constants import HF_LEROBOT_CALIBRATION, ROBOTS
 from lerobot.errors import DeviceNotConnectedError
 from lerobot.motors import Motor, MotorCalibration, MotorNormMode
-
-from ...motors.piper import PiperMotorsBus
-from ..robot import Robot
-from ..utils import ensure_safe_goal_position
-from .config_piper_follower import PiperFollowerConfig
+from lerobot.motors.piper import PiperMotorsBus
+from lerobot.robots import Robot
+from lerobot.robots.piper_follower.config_piper_follower import PiperFollowerConfig
+from lerobot.robots.utils import ensure_safe_goal_position
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,8 @@ class PiperFollower(Robot):
     # Set these in ALL subclasses
     config_class: PiperFollowerConfig
     name = "piper_follower"
+    cameras : dict[str, Camera] = {}
+
 
     def __init__(self, config: PiperFollowerConfig):
         super().__init__(config)
@@ -92,6 +94,9 @@ class PiperFollower(Robot):
     def is_connected(self) -> bool:
         return self.bus.is_connected and all(cam.is_connected for cam in self.cameras.values())
         # return self.bus.is_connected
+
+    def get_cameras(self) -> dict[str, Camera]:
+        return self.cameras
 
     def connect(self, calibrate: bool = True) -> bool:
         if not self.bus.connect():

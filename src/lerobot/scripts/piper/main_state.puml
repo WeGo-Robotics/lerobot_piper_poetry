@@ -1,0 +1,30 @@
+@startuml PiPER Main State Diagram
+
+Config : Robot / Camera / Server Configuration
+AsyncMode : Asynchronous Inferance Operations
+SyncMode : Synchronous Inferance Operations
+ManualMode : Manual Inferance Operations
+TeleopMode : Teleoperation Operations
+SafeMode : Safe Mode Operations \n Slowly down motors before stopping \n Recovery manually
+Waiting : Waiting State
+
+[*] --> Config
+Config --> Waiting  : config_done
+Waiting --> AsyncMode : start_async
+Waiting --> SyncMode : start_sync
+Waiting --> ManualMode : start_manual
+Waiting --> TeleopMode : start_teleop
+Waiting --> SafeMode : start_safe
+AsyncMode --> SafeMode : error_detected
+SyncMode --> SafeMode : error_detected
+ManualMode --> SafeMode : error_detected
+TeleopMode --> SafeMode : error_detected
+SafeMode --> Waiting : recovery_done
+AsyncMode --> Waiting : stop_async
+ManualMode --> Waiting : stop_manual
+SyncMode --> Waiting : stop_sync
+TeleopMode --> Waiting : stop_teleop
+Waiting --> [*] : shutdown
+SafeMode --> [*] : shutdown
+
+@enduml
