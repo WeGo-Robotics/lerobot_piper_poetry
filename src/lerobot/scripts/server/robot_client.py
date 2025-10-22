@@ -54,12 +54,13 @@ from lerobot.robots import (  # noqa: F401
     RobotConfig,
     koch_follower,
     make_robot_from_config,
+    piper_follower,
     so100_follower,
     so101_follower,
-    piper_follower,
 )
 from lerobot.scripts.server.configs import RobotClientConfig
 from lerobot.scripts.server.constants import SUPPORTED_ROBOTS
+from lerobot.scripts.server.filter import action_filter
 from lerobot.scripts.server.helpers import (
     Action,
     FPSTracker,
@@ -120,6 +121,7 @@ class RobotClient:
         )
         self.stub = services_pb2_grpc.AsyncInferenceStub(self.channel)
         self.logger.info(f"Initializing client to connect to server at {self.server_address}")
+        self.logger.info(f"Loop time dt: {self.config.environment_dt:.4f}s")
 
         self.shutdown_event = threading.Event()
 
@@ -129,6 +131,15 @@ class RobotClient:
         self.action_chunk_size = -1
 
         self._chunk_size_threshold = config.chunk_size_threshold
+
+        if config.action_log:
+            torch.set_printoptions(profile="full", linewidth=2000)
+            self.action_log_fd = open("robot_actions_log.yaml", "w")
+            print("timed_actions:" , file=self.action_log_fd)
+        if config.obs_log:
+            torch.set_printoptions(profile="full", linewidth=2000)
+            self.obs_log_fd = open("robot_observations_log.yaml", "w")
+            print("obs:" , file=self.obs_log_fd)
 
         self.action_queue = Queue()
         self.action_queue_lock = threading.Lock()  # Protect queue operations
@@ -242,6 +253,7 @@ class RobotClient:
                 return x2
 
         future_action_queue = Queue()
+        preproc_list :list[TimedAction] = []
         with self.action_queue_lock:
             internal_queue = self.action_queue.queue
 
@@ -257,12 +269,12 @@ class RobotClient:
 
             # If the new action's timestep is not in the current action queue, add it directly
             elif new_action.get_timestep() not in current_action_queue:
-                future_action_queue.put(new_action)
+                preproc_list.append(new_action)
                 continue
 
             # If the new action's timestep is in the current action queue, aggregate it
             # TODO: There is probably a way to do this with broadcasting of the two action tensors
-            future_action_queue.put(
+            preproc_list.append(
                 TimedAction(
                     timestamp=new_action.get_timestamp(),
                     timestep=new_action.get_timestep(),
@@ -271,6 +283,9 @@ class RobotClient:
                     ),
                 )
             )
+        preproc_list = action_filter(preproc_list)
+        for val in preproc_list:
+            future_action_queue.put(val)
 
         with self.action_queue_lock:
             self.action_queue = future_action_queue
@@ -334,6 +349,13 @@ class RobotClient:
                 queue_update_time = time.perf_counter() - start_time
 
                 self.must_go.set()  # after receiving actions, next empty queue triggers must-go processing!
+                if self.config.action_log:
+                    # self.action_queue_log.put(timed_actions)
+                    print("- iter:" , file=self.action_log_fd)
+                    for action in timed_actions:
+                        print(f"  - timestamp: {action.timestamp}", file=self.action_log_fd)
+                        print(f"    timestep: {action.timestep}"  , file=self.action_log_fd)
+                        print(f"    action: {action.action}"      , file=self.action_log_fd)
 
                 if verbose:
                     # Get queue state after changes
@@ -430,6 +452,13 @@ class RobotClient:
 
             _ = self.send_observation(observation)
 
+            motors = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "gripper"]
+            obs_pos = { v : raw_observation[f"{v}.pos"] for _, v in enumerate(motors)}
+            if self.config.obs_log:
+                print(f" - timestamp: {observation.timestamp}", file=self.obs_log_fd)
+                print(f"   timestep: {observation.timestep}"  , file=self.obs_log_fd)
+                print(f"   observation: {obs_pos}" , file=self.obs_log_fd)
+
             self.logger.debug(f"QUEUE SIZE: {current_queue_size} (Must go: {observation.must_go})")
             if observation.must_go:
                 # must-go event will be set again after receiving actions
@@ -472,6 +501,40 @@ class RobotClient:
             """Control loop: (2) Streaming observations to the remote policy server"""
             if self._ready_to_send_observation():
                 _captured_observation = self.control_loop_observation(task, verbose)
+
+            self.logger.info(f"Control loop (ms): {(time.perf_counter() - control_loop_start) * 1000:.2f}")
+            # Dynamically adjust sleep time to maintain the desired control frequency
+            time.sleep(max(0, self.config.environment_dt - (time.perf_counter() - control_loop_start)))
+
+        return _captured_observation, _performed_action
+
+    def control_loop_ex(self, task: str, verbose: bool = False) -> tuple[Observation, Action]:
+        """Combined function for executing actions and streaming observations"""
+        # Wait at barrier for synchronized start
+        self.start_barrier.wait()
+        self.logger.info("Control loop thread starting")
+        self.current_state = "OBSERVATION"
+
+        _performed_action = None
+        _captured_observation = None
+
+        while self.running:
+            control_loop_start = time.perf_counter()
+            match self.current_state:
+                case "ACTION":
+                    """Control loop: (1) Performing actions, when available"""
+                    if self.actions_available():
+                        _performed_action = self.control_loop_action(verbose)
+                    else:
+                        self.current_state = "OBSERVATION"
+                case "OBSERVATION":
+                    """Control loop: (2) Streaming observations to the remote policy server"""
+                    _captured_observation = self.control_loop_observation(task, verbose)
+                    self.current_state = "WAITING"
+                case "WAITING":
+                    if self.actions_available():
+                        self.current_state = "ACTION"
+                        continue
 
             self.logger.info(f"Control loop (ms): {(time.perf_counter() - control_loop_start) * 1000:.2f}")
             # Dynamically adjust sleep time to maintain the desired control frequency

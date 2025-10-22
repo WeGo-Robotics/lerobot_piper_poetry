@@ -130,6 +130,22 @@ class RobotClientConfig:
     chunk_size_threshold: float = field(default=0.5, metadata={"help": "Threshold for chunk size control"})
     fps: int = field(default=DEFAULT_FPS, metadata={"help": "Frames per second"})
 
+    # Log robot actions data
+    action_log : bool = field(
+        default=False, metadata={"help": "Log the actions taken by the robot"}
+    )
+    obs_log : bool = field(
+        default=False, metadata={"help": "Log the observations taken by the robot"}
+    )
+
+    verbose : bool = field(
+        default=False, metadata={"help": "Show detailed log"}
+    )
+
+    client_mode : str = field(
+        default='async', metadata={"help": "Client execution mode"}
+    )
+
     # Aggregate function configuration (CLI-compatible)
     aggregate_fn_name: str = field(
         default="weighted_average",
