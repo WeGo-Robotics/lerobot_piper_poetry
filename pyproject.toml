@@ -264,3 +264,10 @@ default.extend-ignore-identifiers-re = [
 # warn_return_any = true
 # warn_unused_configs = true
 # ignore_missing_imports = false
+
+[tool.poetry]
+name = "lerobot"
+version = "0.0.1"
+description = "For WEGO PiPEER"
+authors = ["sw.han <sw.han@wego-robotics.com>"]
+readme = "README.md"
